@@ -4,11 +4,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 
 import javax.swing.BoxLayout;
 import javax.swing.JFileChooser;
@@ -39,8 +34,10 @@ public class TextEditor {
 	static Scanner input= null;
 	static PrintWriter output = null;
 	static int position = 0;  // 사용자의 커서 위치
+	private BufferedReader br;
 	
 	public static void main(String[] args) {
+		System.setProperty( "https.protocols", "TLSv1.1,TLSv1.2" );  // connection reset 문제 해결
 
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
@@ -351,6 +348,7 @@ public class TextEditor {
 					output.println(message);
 					
 					System.out.println(message);
+					
 					// 연결 끊기
 					closingConnecting();
 					
@@ -364,6 +362,22 @@ public class TextEditor {
 						System.out.println("Connection refused");
 						System.out.println("-------------------------");
 					}
+					
+					accessServer();
+					
+					try {
+						br = new BufferedReader(new InputStreamReader(link.getInputStream()));
+						
+						StringBuffer buffer = new StringBuffer();
+						
+						
+						br.close();
+					
+					} catch (IOException e1) {
+						System.out.println(e1.getMessage());
+					}
+					
+					closingConnecting();
 				}
 			}
 
@@ -371,6 +385,12 @@ public class TextEditor {
 			@Override
 			public void keyReleased(KeyEvent e) {
 				// 서버로부터 받은 문자열 출력
+				int keyCode = e.getKeyCode();
+				
+				// if(keyCode == KeyEvent.VK_TAB) {
+					// accessServer();
+				
+				//}
 			}
 			});
 		
