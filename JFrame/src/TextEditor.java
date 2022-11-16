@@ -17,9 +17,12 @@ import javax.swing.JTextArea;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 public class TextEditor {
 	private JFrame frame;
 	private JTextArea textArea;  // 텍스트 편집 영역, 여러 줄을 입력할 수 있는 컴포넌트(자체 스크롤 없음)
@@ -34,7 +37,8 @@ public class TextEditor {
 	static Scanner input= null;
 	static PrintWriter output = null;
 	static int position = 0;  // 사용자의 커서 위치
-	private BufferedReader br;
+	private String receiveMessage;  // 서버로부터 받은 메세지
+	private ArrayList<String> list = new ArrayList<>();
 	
 	public static void main(String[] args) {
 		System.setProperty( "https.protocols", "TLSv1.1,TLSv1.2" );  // connection reset 문제 해결
@@ -363,34 +367,65 @@ public class TextEditor {
 						System.out.println("-------------------------");
 					}
 					
+					
 					accessServer();
 					
+					// 서버로부터 문자열을 받아온다.  이부분이 노트북 window에서 안된다.(문자열이 비어있음)
 					try {
-						br = new BufferedReader(new InputStreamReader(link.getInputStream()));
+						receiveMessage = input.nextLine();
 						
-						StringBuffer buffer = new StringBuffer();
+						System.out.println(receiveMessage);
 						
-						
-						br.close();
-					
-					} catch (IOException e1) {
+					} catch (Exception e1) {
 						System.out.println(e1.getMessage());
 					}
 					
 					closingConnecting();
+					
+					// pattern1 : 출력 문자열
+					// pattern2 : ... 문자열
+					Pattern pattern1 = Pattern.compile("[\nwhite](.*?)[white]");
+					Pattern pattern2 = Pattern.compile("[white](.*?)[\nwhite]");
+					
+					Matcher matcher1 = pattern1.matcher(receiveMessage);
+					Matcher matcher2 = pattern2.matcher(receiveMessage);
+					
+					// 결과를 배열에 저장
+					String result = "";
+					
+					// 일치하는게 있다면 출력
+					while(matcher1.find()) {
+						int i = 0;
+						
+						// 만약 찾을 수 없으면 break
+						if(matcher1.group(1) == null) break;
+						
+						System.out.println(matcher1.group(1) + " " + matcher2.group(1));
+						// 찾은 문자열을 배열에 추가 (콤마를 기준으로 추가)
+						result = matcher1.group(1) + "," + matcher2.group(2);
+						list.add(result);
+					}
+					
+					// 마지막 배열에 마지막 문자인 EndFor 추가
+					int lastIndex = list.size() - 1;
+					
+					String temp = list.get(lastIndex) + "EndFor";
+					
+					list.set(lastIndex, temp);
+					
+					// 확인용 출력
+					for(int i = 0; i < list.size(); i++) {
+						System.out.println(list.get(i));
+					}
 				}
 			}
 
 			// 키를 눌렀다 뗐을 때의 동작 정의
 			@Override
 			public void keyReleased(KeyEvent e) {
-				// 서버로부터 받은 문자열 출력
+				// 서버로부터 받은 문자열을 context menu로 출력
 				int keyCode = e.getKeyCode();
 				
-				// if(keyCode == KeyEvent.VK_TAB) {
-					// accessServer();
-				
-				//}
 			}
 			});
 		
