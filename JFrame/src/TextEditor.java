@@ -1,10 +1,14 @@
 import java.awt.Color;
 import java.awt.EventQueue;
+import java.awt.MenuItem;
+import java.awt.Point;
+import java.awt.PopupMenu;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 
+import javax.swing.Action;
 import javax.swing.BoxLayout;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -12,11 +16,15 @@ import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
+import javax.swing.event.CaretEvent;
+import javax.swing.event.CaretListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-
+import javax.swing.text.BadLocationException;
 
 import java.io.*;
 import java.net.*;
@@ -29,16 +37,17 @@ public class TextEditor {
 	private JFileChooser fileChooser = new JFileChooser();  // 파일 선택 열기
 	private File file;
 	private JTextArea lines;  // line number
+	private JPopupMenu popupmenu;
 	
 	private static String message;  // socket 전송 메세지
 	private static final int PORT = 50000;
 	private static InetAddress host;
 	static Socket link = null;
-	static Scanner input= null;
+	static BufferedReader input= null;
 	static PrintWriter output = null;
 	static int position = 0;  // 사용자의 커서 위치
 	private String receiveMessage;  // 서버로부터 받은 메세지
-	private ArrayList<String> list = new ArrayList<>();
+	private ArrayList<String> list;
 	
 	public static void main(String[] args) {
 		System.setProperty( "https.protocols", "TLSv1.1,TLSv1.2" );  // connection reset 문제 해결
@@ -83,8 +92,8 @@ public class TextEditor {
 			// 서버와 호스트 연결
 			link = new Socket(host, PORT);
 			
-			// 소켓으로부터 바이트를 읽는 데 사용할 수 있는 InputStream 반환
-			input = new Scanner(link.getInputStream());
+			// 소켓으로부터 문자열을 읽는 데 사용할 수 있는 InputStream 반환
+			input = new BufferedReader(new InputStreamReader(link.getInputStream()));
 			
 			// 소켓으로 write할 outputStream 반환
 			output = new PrintWriter(link.getOutputStream());
@@ -281,7 +290,6 @@ public class TextEditor {
 		textArea.addKeyListener(new KeyListener() {
 			@Override
 			public void keyTyped(KeyEvent e) {
-
 			}
 
 			// 키가 눌려진 상태일 때의 동작 정의
@@ -290,10 +298,10 @@ public class TextEditor {
 				int keyCode = e.getKeyCode();
 				
 				if(keyCode == KeyEvent.VK_ENTER) {
-					// 사용자가 입력한 text를 가져온다. (한줄?)
-					
 				}
 				else if(keyCode == KeyEvent.VK_TAB) {
+					popupmenu = new JPopupMenu();
+					list = new ArrayList<>();
 					// tab 키가 눌리면 서버 접속
 					accessServer();
 				
@@ -310,6 +318,7 @@ public class TextEditor {
 					
 					// 서버에게 텍스트 길이 전달
 					output.println(sendMessage);
+					output.flush();
 					System.out.println(sendMessage);
 					
 					// 커서 앞 텍스트 길이, true 전달 후 서버 접속 끊기
@@ -330,6 +339,9 @@ public class TextEditor {
 					accessServer();
 					System.out.println("\n" + message);
 					output.println(message);
+					
+					output.flush();
+					
 					// 접속 끊기
 					closingConnecting();
 					
@@ -350,6 +362,7 @@ public class TextEditor {
 					
 					accessServer();
 					output.println(message);
+					output.flush();
 					
 					System.out.println(message);
 					
@@ -370,64 +383,107 @@ public class TextEditor {
 					
 					accessServer();
 					
-					// 서버로부터 문자열을 받아온다.  이부분이 노트북 window에서 안된다.(문자열이 비어있음)
+					System.out.println("성공적으로 바인딩 되었는가? : " + link.isBound());
+					System.out.println(link.toString());
+					
+					// connection reset: read시 상대방 socket이 close 된 경우
+					/*
 					try {
-						receiveMessage = input.nextLine();
-						
-						System.out.println(receiveMessage);
-						
-					} catch (Exception e1) {
-						System.out.println(e1.getMessage());
+						receiveMessage = input.readLine();
+						System.out.println("서버에서 보낸 메세지: " + receiveMessage);
+					
+					} catch (IOException e2) {
+						// System.out.println(e2.getMessage());
+						e2.printStackTrace();
 					}
+					*/
 					
 					closingConnecting();
 					
-					// pattern1 : 출력 문자열
-					// pattern2 : ... 문자열
-					Pattern pattern1 = Pattern.compile("[\nwhite](.*?)[white]");
-					Pattern pattern2 = Pattern.compile("[white](.*?)[\nwhite]");
+					// pattern : 출력 문자열
+					Pattern pattern = Pattern.compile("[white](.*?)[white]");
 					
-					Matcher matcher1 = pattern1.matcher(receiveMessage);
-					Matcher matcher2 = pattern2.matcher(receiveMessage);
+					receiveMessage = "\nwhite * white ...\nwhite / white ...\nwhite + white ...\nwhite - white ...\nwhite < white ...\nwhite <= white ...\nwhite > white ...\nwhite >= white ...\nwhite <> white ...\nwhite = white ...\nwhite And white ...\nwhite Or white ...\nwhite To white ... white EndFor";
+					receiveMessage = receiveMessage.replace("\n", "");
+					receiveMessage = receiveMessage.replace(" ", "");
+					
+					Matcher matcher = pattern.matcher(receiveMessage);
 					
 					// 결과를 배열에 저장
 					String result = "";
+					// 빈 문자열인지 확인 및 정규식에 맞는 문자열 추출
+					String str = "";
 					
-					// 일치하는게 있다면 출력
-					while(matcher1.find()) {
-						int i = 0;
-						
-						// 만약 찾을 수 없으면 break
-						if(matcher1.group(1) == null) break;
-						
-						System.out.println(matcher1.group(1) + " " + matcher2.group(1));
-						// 찾은 문자열을 배열에 추가 (콤마를 기준으로 추가)
-						result = matcher1.group(1) + "," + matcher2.group(2);
-						list.add(result);
+					// 일치하는게 있다면 문자별로 list에 저장
+					while(matcher.find()) {
+						if((str = matcher.group(1)) != "") {
+							result = str + " ... ";
+							list.add(result);
+							result = "";
+						}
 					}
 					
-					// 마지막 배열에 마지막 문자인 EndFor 추가
+					// list 마지막 배열에 마지막 문자인 EndFor을 추가
 					int lastIndex = list.size() - 1;
 					
 					String temp = list.get(lastIndex) + "EndFor";
 					
 					list.set(lastIndex, temp);
 					
-					// 확인용 출력
+					// 확인용 출력, popupmenu에 추가
 					for(int i = 0; i < list.size(); i++) {
+						// 공백을 기준으로 앞 문자열 추출
+						int stridx = list.get(i).indexOf(" ");
+						String itemHeader = list.get(i).substring(0, stridx);
+						
+						// popupmenu에 문자열 추가
+						JMenuItem menuitem = new JMenuItem(list.get(i));
+						
+						menuitem.addActionListener(new ActionListener() {
+							@Override
+							public void actionPerformed(ActionEvent e) {
+								textArea.append(itemHeader);
+							}
+							
+						});
+						popupmenu.add(menuitem);
+						// popupmenu.add((Action) new MenuItem(list.get(i)));
 						System.out.println(list.get(i));
+						
 					}
+					// popupmenu를 frame에 추가
+					frame.add(popupmenu);
 				}
 			}
 
 			// 키를 눌렀다 뗐을 때의 동작 정의
 			@Override
 			public void keyReleased(KeyEvent e) {
-				// 서버로부터 받은 문자열을 context menu로 출력
+				// 서버로부터 받은 문자열을 popup menu로 출력
+				int lineNum = 1;
+		        int columnNum = 0;
 				int keyCode = e.getKeyCode();
-				
+				if(keyCode == KeyEvent.VK_TAB) {
+					// 커서 위치를 원래 위치로 변경
+					try {
+						// tab키로 인한 공백 제거
+						textArea.replaceRange("", position, position+1);
+			            
+			            int caretpos = textArea.getCaretPosition();
+			            
+			            lineNum = textArea.getLineOfOffset(caretpos);
+			            columnNum = caretpos - textArea.getLineStartOffset(lineNum) + 1;
+			            lineNum += 1;
+			            
+			        }
+			        catch(Exception ex){
+			        	System.out.println("error");
+				}
+					popupmenu.show(textArea, (int)(columnNum * 4.5), lineNum * 15);
+			 }
 			}
 			});
+		textArea.setComponentPopupMenu(popupmenu);
 		
 		frame.pack();  // pack() : JRrame의 내용물에 알맞게 윈도우 크기 조절
 		frame.setSize(500,500);  // 윈도우 창 크기 지정
