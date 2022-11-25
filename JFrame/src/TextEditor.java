@@ -31,6 +31,7 @@ import java.net.*;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 public class TextEditor {
 	private JFrame frame;
 	private JTextArea textArea;  // 텍스트 편집 영역, 여러 줄을 입력할 수 있는 컴포넌트(자체 스크롤 없음)
@@ -317,7 +318,7 @@ public class TextEditor {
 					String sendMessage = "" + textLength + " True";
 					
 					// 서버에게 텍스트 길이 전달
-					output.println(sendMessage);
+					output.print(sendMessage);
 					output.flush();
 					System.out.println(sendMessage);
 					
@@ -338,7 +339,7 @@ public class TextEditor {
 					// 다시 서버 접속, 커서 앞의 텍스트 보내기
 					accessServer();
 					System.out.println("\n" + message);
-					output.println(message);
+					output.print(message);
 					
 					output.flush();
 					
@@ -361,7 +362,7 @@ public class TextEditor {
 					message = message.substring(position, textArea.getText().length());
 					
 					accessServer();
-					output.println(message);
+					output.print(message);
 					output.flush();
 					
 					System.out.println(message);
@@ -387,8 +388,9 @@ public class TextEditor {
 					System.out.println(link.toString());
 					
 					// connection reset: read시 상대방 socket이 close 된 경우
-					/*
+					
 					try {
+						System.out.println("확인용");
 						receiveMessage = input.readLine();
 						System.out.println("서버에서 보낸 메세지: " + receiveMessage);
 					
@@ -396,14 +398,14 @@ public class TextEditor {
 						// System.out.println(e2.getMessage());
 						e2.printStackTrace();
 					}
-					*/
+					
 					
 					closingConnecting();
 					
 					// pattern : 출력 문자열
 					Pattern pattern = Pattern.compile("[white](.*?)[white]");
 					
-					receiveMessage = "\nwhite * white ...\nwhite / white ...\nwhite + white ...\nwhite - white ...\nwhite < white ...\nwhite <= white ...\nwhite > white ...\nwhite >= white ...\nwhite <> white ...\nwhite = white ...\nwhite And white ...\nwhite Or white ...\nwhite To white ... white EndFor";
+					// receiveMessage = "\nwhite * white ...\nwhite / white ...\nwhite + white ...\nwhite - white ...\nwhite < white ...\nwhite <= white ...\nwhite > white ...\nwhite >= white ...\nwhite <> white ...\nwhite = white ...\nwhite And white ...\nwhite Or white ...\nwhite To white ... white EndFor";
 					receiveMessage = receiveMessage.replace("\n", "");
 					receiveMessage = receiveMessage.replace(" ", "");
 					
@@ -424,6 +426,7 @@ public class TextEditor {
 					}
 					
 					// list 마지막 배열에 마지막 문자인 EndFor을 추가
+					System.out.println("저장한 문자들 list 크기: " + list.size());
 					int lastIndex = list.size() - 1;
 					
 					String temp = list.get(lastIndex) + "EndFor";
