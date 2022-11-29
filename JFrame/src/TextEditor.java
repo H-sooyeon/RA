@@ -43,12 +43,11 @@ public class TextEditor {
 	private static String message;  // socket 전송 메세지
 	private static final int PORT = 50000;
 	private static InetAddress host;
-	static Socket link = null;
-	static BufferedReader input= null;
-	static PrintWriter output = null;
-	static int position = 0;  // 사용자의 커서 위치
-	private String receiveMessage;  // 서버로부터 받은 메세지
-	private ArrayList<String> list;
+	private static Socket link = null;
+	private static BufferedReader input= null;
+	private static PrintWriter output = null;
+	private static int position = 0;  // 사용자의 커서 위치
+	private static boolean isReceive;
 	
 	public static void main(String[] args) {
 		System.setProperty( "https.protocols", "TLSv1.1,TLSv1.2" );  // connection reset 문제 해결
@@ -56,7 +55,6 @@ public class TextEditor {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					// host의 ip주소를 가져온다.
 					host = InetAddress.getLocalHost();
 				} 
 				catch(UnknownHostException uhEx) {
@@ -79,7 +77,7 @@ public class TextEditor {
 	private static void closingConnecting() {
 		// 접속 끊기
 		try {
-			System.out.println("\n* Closing connection... *");
+			// System.out.println("\n* Closing connection... *");
 			link.close();
 			link = null;
 		} catch(IOException ioEx) {
@@ -99,10 +97,11 @@ public class TextEditor {
 			// 소켓으로 write할 outputStream 반환
 			output = new PrintWriter(link.getOutputStream());
 			
-			// socekt 연결이 됐는지 확인하기 위한 필드
+			/*
 			boolean result = link.isConnected();
 			if(result) System.out.println("Connecting Server");
 			else System.out.println("Fail Connecting Server");
+			*/
 		}
 		catch(IOException ioEx) {
 			System.out.println("Connection refused");
@@ -120,25 +119,27 @@ public class TextEditor {
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);  // 종료 이벤트 처리
 		
 		JMenuBar menuBar = new JMenuBar();  // 메뉴바 객체 생성
-		frame.setJMenuBar(menuBar);  // 프레임에 메뉴바 적용
+		frame.setJMenuBar(menuBar);  // 메뉴바 적용
 		
-		JMenu mnFile = new JMenu("File");  // 메뉴 표시줄에 보이게 될 File 메뉴 생성
-		menuBar.add(mnFile);  // 메뉴바에 File 메뉴 추가
+		JMenu mnFile = new JMenu("File");  // File 메뉴 생성
+		menuBar.add(mnFile);  // File 메뉴 추가
 		
-		JMenuItem mntmNew = new JMenuItem("New");  // 메뉴에 포함될 세부 메뉴 생성
+		JMenuItem mntmNew = new JMenuItem("New");  // 세부 메뉴 생성
+		
 		mntmNew.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				int retval = fileChooser.showDialog(frame, "New");  // Dialog 생성
 				if(retval == JFileChooser.APPROVE_OPTION) {  // 예 확인을 선택했을 때 리턴되는 값
 					file = fileChooser.getSelectedFile();  // 생성한 파일의 경로를 반환, file에 저장
-					textArea.setText("");  // 공백으로 초기화
+					textArea.setText("");
 				}
 			}
-		});
+		}); // end ActionListener
 		
-		mnFile.add(mntmNew);  // 이벤트 정의 후 File 메뉴에 세부 메뉴인 New 적용
+		mnFile.add(mntmNew);  // New 적용
 		
-		JMenuItem mntmOpen = new JMenuItem("Open");  // 메뉴에 포함될 세부 메뉴 생성
+		JMenuItem mntmOpen = new JMenuItem("Open");  // 세부 메뉴 생성
+		
 		mntmOpen.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				// Dialog 창에서 열기가 정상적으로 수행된 경우 0을 반환, 취소를 누른 경우 1을 반환
@@ -147,96 +148,96 @@ public class TextEditor {
 				// 파일이 잘 열렸을 경우
 				if(retval == JFileChooser.APPROVE_OPTION) {
 					file = fileChooser.getSelectedFile();  // 선택한 파일의 경로 저장
-					// 선택한 파일을 읽어
-					// JTextArea에 추가
-					// 검사 예외 처리하는 코드 작성
+
 					try {
 						FileReader fr = new FileReader(file);  // 지정한 파일로부터 읽어올 객체 생성
-						BufferedReader br = new BufferedReader(fr);  // 버퍼를 이용해서 사용(효율적)
+						BufferedReader br = new BufferedReader(fr);
 						
 						String str = "";
 						String textLine = "";
 						
-						textLine = br.readLine();  // BufferedReader가 가지고 있는 문자열 한 줄 읽기
+						textLine = br.readLine();
 						
-						// BufferedLine의 readLine은 읽을 데이터가 없을 때 null 리턴
 						while((str = br.readLine()) != null) {
-							textLine = textLine + "\n" + str;  // 한 줄씩 끊어서 저장
+							textLine = textLine + "\n" + str;
 						}
-						textArea.setText(textLine);  // 지정한 파일의 text를 textArea로 set
+						textArea.setText(textLine);
 					} catch(Exception e) {
-						JOptionPane.showMessageDialog(frame, e.getMessage());  //예외 처리
+						JOptionPane.showMessageDialog(frame, e.getMessage());
 					}
 				} else {
-					// 파일이 제대로 열리지 않은 경우 or 그냥 닫은 경우
-					// Not working 메시지 띄우기
+					// 파일이 제대로 열리지 않은 경우 or 그냥 닫은 경우 Not working 메시지 띄우기
 					JOptionPane.showMessageDialog(frame, "User canced the operation");
 				}
 			}
-		});
-		mnFile.add(mntmOpen);  // 이벤트 정의 후 File 메뉴에 세부 메뉴인 Open 적용
+		}); // end ActionListener
 		
-		JMenuItem mntmSave = new JMenuItem("Save");  // 메뉴에 포함될 세부 메뉴 생성
+		mnFile.add(mntmOpen);  // Open 적용
+		
+		JMenuItem mntmSave = new JMenuItem("Save");  // 세부 메뉴 생성
+		
 		mntmSave.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				if(file != null) {
 					// 선택한 파일에 저장
 					try {
-						FileWriter wr = new FileWriter(file, false);  // 문자 스트림을 이용하여 file 객체 생성
+						FileWriter wr = new FileWriter(file, false);
 						BufferedWriter bw = new BufferedWriter(wr);
-						bw.write(textArea.getText());  // 파일에 버퍼를 통해서 text 저장(효율적)
-						bw.flush();  // 버퍼에 남은 text 전송
-						bw.close();  // 닫기
+						bw.write(textArea.getText());
+						bw.flush();
+						bw.close();
 					} catch(Exception e) {
 						// 예외 처리
 						JOptionPane.showMessageDialog(frame, e.getMessage());
 					}
 				}	
 			}
-		});
-		mnFile.add(mntmSave);  // 이벤트 정의 후 File 메뉴에 세부 메뉴인 Save 적용
+		}); // end ActionListener
 		
-		JMenuItem mntmClose = new JMenuItem("Close");  // 메뉴에 포함될 세부 메뉴 생성
+		mnFile.add(mntmSave);  // Save 적용
+		
+		JMenuItem mntmClose = new JMenuItem("Close");  // 세부 메뉴 생성
+		
 		mntmClose.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				// 텍스트 편집 영역을 공백으로 초기화하고, 현재 선택된 파일을 초기화
+				
 				file = null;  // 현재 선택된 파일 초기화
-				// JTextArea를 비움
-				textArea.setText("");  // 공백으로 초기화
+				textArea.setText("");
 			
 			}
-		});
-		mnFile.add(mntmClose);  // 이벤트 정의 후 File 메뉴에 세부 메뉴인 Close 적용
+		}); // end ActionListener
 		
-		JMenuItem mntmQuit = new JMenuItem("Quit");  // 메뉴에 포함될 세부 메뉴 생성
+		mnFile.add(mntmClose);  // Close 적용
+		
+		JMenuItem mntmQuit = new JMenuItem("Quit");  // 세부 메뉴 생성
+		
 		mntmQuit.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				// 프로그램을 종료. System 클래스의 exit 메소드 사용.
-				// 프로그램 종료
 				System.exit(0);  // 정상 종료
 			}
-		});
-		mnFile.add(mntmQuit);  // 이벤트 정의 후 File 메뉴에 세부 메뉴인 Quit 적용
+		}); // end ActionListener
 		
-		JMenu mnAbout = new JMenu("About");  // 메뉴 표시줄에 보이게 될 About 메뉴 생성
-		menuBar.add(mnAbout);  // 메뉴바에 About 메뉴 추가
+		mnFile.add(mntmQuit);  // Quit 적용
+		
+		JMenu mnAbout = new JMenu("About");  // About 메뉴 생성
+		menuBar.add(mnAbout);  // About 메뉴 추가
 		
 		JMenuItem mntmAboutTextEditor = new JMenuItem("About Text Editor");  // About 메뉴에 포함할 세부 메뉴
+		
 		mntmAboutTextEditor.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				JOptionPane.showMessageDialog(frame, "Text Editor Sample");  // 단순한 알림창을 띄우는 함수
+				JOptionPane.showMessageDialog(frame, "Text Editor Sample");
 			}
-		});
-		mnAbout.add(mntmAboutTextEditor);  // 이벤트 정의 후 About 메뉴에 세부 메뉴인 About Text Editor 추가
-		// 컨텐츠 영역을 가져온다.
-		// 컨텐츠 영역에 부착되는 구성요소들을 어떻게 배치할 것인지 정해준다.
-		// x 방향으로 컴포넌트들을 배치
+		}); // end ActionListener
+		
+		mnAbout.add(mntmAboutTextEditor);  // About Text Editor 추가
+
 		frame.getContentPane().setLayout(new BoxLayout(frame.getContentPane(), BoxLayout.X_AXIS));
 	
 		// 텍스트 에디터에 스크롤 추가
 		JScrollPane scrollPane = new JScrollPane();
-		// frame에서 컨텐츠 영역을 가져온다.
-		// 컨텐츠 영역에 scroll을 추가
+		// frame에서 컨텐츠 영역을 가져오고 컨텐츠 영역에 scroll 추가
 		frame.getContentPane().add(scrollPane);
 		
 		textArea = new JTextArea();
@@ -249,7 +250,7 @@ public class TextEditor {
 		lines.setEditable(false);  // line number 이므로 편집(수정) 불가
 		
 		// 문서의 내용이 변경되었을 때의 이벤트 설정
-		textArea.getDocument().addDocumentListener(new DocumentListener(){
+		textArea.getDocument().addDocumentListener(new DocumentListener() {
 			public String getText(){
 				int caretPosition = textArea.getDocument().getLength();
 				
@@ -260,7 +261,7 @@ public class TextEditor {
 					text += i + System.getProperty("line.separator");
 				}
 				return text;
-			}
+			} // end getText
 			@Override
 			public void changedUpdate(DocumentEvent de) {
 				lines.setText(getText());
@@ -276,7 +277,7 @@ public class TextEditor {
 				lines.setText(getText());  // 사라진 만큼 line number 재설정
 			}
  
-		});
+		}); // end DocumentListener
 		
 		// viewport: 기본이 되는 정보를 보기 위해 사용하는 뷰포트(창)
 		scrollPane.getViewport().add(textArea);
@@ -293,16 +294,12 @@ public class TextEditor {
 			public void keyTyped(KeyEvent e) {
 			}
 
-			// 키가 눌려진 상태일 때의 동작 정의
 			@Override
 			public void keyPressed(KeyEvent e) {
 				int keyCode = e.getKeyCode();
 				
-				if(keyCode == KeyEvent.VK_ENTER) {
-				}
-				else if(keyCode == KeyEvent.VK_TAB) {
+				if(keyCode == KeyEvent.VK_TAB) {
 					popupmenu = new JPopupMenu();
-					list = new ArrayList<>();
 					// tab 키가 눌리면 서버 접속
 					accessServer();
 				
@@ -320,127 +317,78 @@ public class TextEditor {
 					// 서버에게 텍스트 길이 전달
 					output.print(sendMessage);
 					output.flush();
-					System.out.println(sendMessage);
 					
 					// 커서 앞 텍스트 길이, true 전달 후 서버 접속 끊기
 					closingConnecting();
-					
-					// 연결 확인용 나중에 삭제
-					try {
-						boolean result = link.isConnected();
-						System.out.println("-------------------------");
-						if(result) System.out.println("Connecting Server");
-					}
-					catch(Exception ioEx) {
-						System.out.println("Connection refused");
-						System.out.println("-------------------------");
-					}
+
 					
 					// 다시 서버 접속, 커서 앞의 텍스트 보내기
 					accessServer();
-					System.out.println("\n" + message);
+
 					output.print(message);
-					
 					output.flush();
 					
 					// 접속 끊기
 					closingConnecting();
 					
-					// 연결 확인용 나중에 삭제
-					try {
-						boolean result = link.isConnected();
-						System.out.println("-------------------------");
-						if(result) System.out.println("Connecting Server");
-					}
-					catch(Exception ioEx) {
-						System.out.println("Connection refused");
-						System.out.println("-------------------------");
-					}
 					
 					// 서버 접속, 커서 뒤의 텍스트를 보낸다.
+					accessServer();
+					
 					message = textArea.getText();
 					message = message.substring(position, textArea.getText().length());
 					
-					accessServer();
 					output.print(message);
 					output.flush();
 					
-					System.out.println(message);
 					
 					// 연결 끊기
 					closingConnecting();
+
 					
-					// 연결 확인용 나중에 삭제
-					try {
-						boolean result = link.isConnected();
-						System.out.println("-------------------------");
-						if(result) System.out.println("Connecting Server");
-					}
-					catch(Exception ioEx) {
-						System.out.println("Connection refused");
-						System.out.println("-------------------------");
-					}
-					
-					
+					// 서버로부터 문자열 수신 및 출력
 					accessServer();
 					
-					System.out.println("성공적으로 바인딩 되었는가? : " + link.isBound());
-					System.out.println(link.toString());
-					
-					// connection reset: read시 상대방 socket이 close 된 경우
+					ArrayList<String> list = new ArrayList<>();
+					String receiveMessage = "";
+					isReceive = false;
 					
 					try {
-						System.out.println("확인용");
-						receiveMessage = input.readLine();
-						System.out.println("서버에서 보낸 메세지: " + receiveMessage);
-					
+						while((receiveMessage = input.readLine()) != null) {
+							// 이전 문자열이 공백이면 break
+							if("SuccessfullyParsed".equals(receiveMessage)) {
+								isReceive = false;
+								break;
+							}
+							
+							isReceive = true;
+							
+							receiveMessage = receiveMessage.replace("white ", ""); // white 문자열 제거
+							list.add(receiveMessage);
+							
+							System.out.println(receiveMessage); // 서버로부터 받은 문자열 확인용 출력
+						}
 					} catch (IOException e2) {
-						// System.out.println(e2.getMessage());
 						e2.printStackTrace();
 					}
 					
-					
 					closingConnecting();
 					
-					// pattern : 출력 문자열
-					Pattern pattern = Pattern.compile("[white](.*?)[white]");
-					
-					// receiveMessage = "\nwhite * white ...\nwhite / white ...\nwhite + white ...\nwhite - white ...\nwhite < white ...\nwhite <= white ...\nwhite > white ...\nwhite >= white ...\nwhite <> white ...\nwhite = white ...\nwhite And white ...\nwhite Or white ...\nwhite To white ... white EndFor";
-					receiveMessage = receiveMessage.replace("\n", "");
-					receiveMessage = receiveMessage.replace(" ", "");
-					
-					Matcher matcher = pattern.matcher(receiveMessage);
-					
-					// 결과를 배열에 저장
-					String result = "";
-					// 빈 문자열인지 확인 및 정규식에 맞는 문자열 추출
-					String str = "";
-					
-					// 일치하는게 있다면 문자별로 list에 저장
-					while(matcher.find()) {
-						if((str = matcher.group(1)) != "") {
-							result = str + " ... ";
-							list.add(result);
-							result = "";
-						}
-					}
-					
-					// list 마지막 배열에 마지막 문자인 EndFor을 추가
-					System.out.println("저장한 문자들 list 크기: " + list.size());
-					int lastIndex = list.size() - 1;
-					
-					String temp = list.get(lastIndex) + "EndFor";
-					
-					list.set(lastIndex, temp);
-					
 					// 확인용 출력, popupmenu에 추가
-					for(int i = 0; i < list.size(); i++) {
-						// 공백을 기준으로 앞 문자열 추출
-						int stridx = list.get(i).indexOf(" ");
-						String itemHeader = list.get(i).substring(0, stridx);
-						
+					for(int i = 1; i < list.size(); i++) {
 						// popupmenu에 문자열 추가
 						JMenuItem menuitem = new JMenuItem(list.get(i));
+						
+						// 공백을 기준으로 앞 문자열 추출
+						int stridx = list.get(i).indexOf(" ");
+						
+						// 공백이 없으면 문자열 길이 반환
+						if(stridx == -1) {
+							stridx = list.get(i).length();
+						}
+						
+						// 공백이 있으면 공백 앞 문자열 추출, 없으면 문자열 그대로 추출
+						String itemHeader = list.get(i).substring(0, stridx);
 						
 						menuitem.addActionListener(new ActionListener() {
 							@Override
@@ -448,16 +396,14 @@ public class TextEditor {
 								textArea.append(itemHeader);
 							}
 							
-						});
-						popupmenu.add(menuitem);
-						// popupmenu.add((Action) new MenuItem(list.get(i)));
-						System.out.println(list.get(i));
+						}); // end ActionListener
 						
-					}
-					// popupmenu를 frame에 추가
-					frame.add(popupmenu);
+						popupmenu.add(menuitem);
+						
+					} // end for
+					frame.add(popupmenu); // popupmenu를 frame에 추가
 				}
-			}
+			} // end keyPressed
 
 			// 키를 눌렀다 뗐을 때의 동작 정의
 			@Override
@@ -466,7 +412,7 @@ public class TextEditor {
 				int lineNum = 1;
 		        int columnNum = 0;
 				int keyCode = e.getKeyCode();
-				if(keyCode == KeyEvent.VK_TAB) {
+				if( isReceive && (keyCode == KeyEvent.VK_TAB) ) {
 					// 커서 위치를 원래 위치로 변경
 					try {
 						// tab키로 인한 공백 제거
@@ -480,12 +426,12 @@ public class TextEditor {
 			            
 			        }
 			        catch(Exception ex){
-			        	System.out.println("error");
+			        	ex.printStackTrace();
 				}
 					popupmenu.show(textArea, (int)(columnNum * 4.5), lineNum * 15);
 			 }
-			}
-			});
+			} // end keyReleased
+			}); // end KeyListener
 		textArea.setComponentPopupMenu(popupmenu);
 		
 		frame.pack();  // pack() : JRrame의 내용물에 알맞게 윈도우 크기 조절
