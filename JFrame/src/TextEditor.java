@@ -40,12 +40,8 @@ public class TextEditor {
 	private JTextArea lines;  // line number
 	private JPopupMenu popupmenu;
 	
-	private static String message;  // socket 전송 메세지
-	private static final int PORT = 50000;
 	private static InetAddress host;
 	private static Socket link = null;
-	private static BufferedReader input= null;
-	private static PrintWriter output = null;
 	private static int position = 0;  // 사용자의 커서 위치
 	private static boolean isReceive;
 	
@@ -68,53 +64,19 @@ public class TextEditor {
 					window.frame.setVisible(true);
 				} 
 				catch(Exception e) {
-					
+					e.printStackTrace();
 				}
 			}
 		});
 	}
-	
-	private static void closingConnecting() {
-		// 접속 끊기
-		try {
-			// System.out.println("\n* Closing connection... *");
-			link.close();
-			link = null;
-		} catch(IOException ioEx) {
-			System.out.println("Connecting error");
-		}
-	}
-	
-	// 서버와 연결, 소켓 inputstream, outputstream 반환
-	private static void accessServer() {
-		try {
-			// 서버와 호스트 연결
-			link = new Socket(host, PORT);
-			
-			// 소켓으로부터 문자열을 읽는 데 사용할 수 있는 InputStream 반환
-			input = new BufferedReader(new InputStreamReader(link.getInputStream()));
-			
-			// 소켓으로 write할 outputStream 반환
-			output = new PrintWriter(link.getOutputStream());
-			
-			/*
-			boolean result = link.isConnected();
-			if(result) System.out.println("Connecting Server");
-			else System.out.println("Fail Connecting Server");
-			*/
-		}
-		catch(IOException ioEx) {
-			System.out.println("Connection refused");
-		}
-	}
-	
+
 	// Create TextEditor
 	public TextEditor() {
 		initialize();  // 내용 초기화
 	}
 	
 	private void initialize() {
-		frame = new JFrame();  // 타이틀이 없는 프레임 생성
+		frame = new JFrame();
 		frame.setBounds(100,100,450,300);  // 위치, 너비, 높이 지정(x,y,w,h)
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);  // 종료 이벤트 처리
 		
@@ -262,6 +224,7 @@ public class TextEditor {
 				}
 				return text;
 			} // end getText
+			
 			@Override
 			public void changedUpdate(DocumentEvent de) {
 				lines.setText(getText());
@@ -286,7 +249,7 @@ public class TextEditor {
 		// setVerticalScrollBarPolicy: 수직방향의 정책 설정 혹은 읽기
 		scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
  
-		frame.add(scrollPane);  // frame에 scollPane 객체 추가
+		frame.add(scrollPane);
 		
 		// textArea에서 tab키를 누르면 이벤트 발생 (서버로 데이터 전달)
 		textArea.addKeyListener(new KeyListener() {
@@ -300,79 +263,12 @@ public class TextEditor {
 				
 				if(keyCode == KeyEvent.VK_TAB) {
 					popupmenu = new JPopupMenu();
-					// tab 키가 눌리면 서버 접속
-					accessServer();
-				
-					// 사용자가 입력한 커서 앞 text를 가져온다.
-					position = textArea.getCaretPosition();
-					message = textArea.getText();
-					message = message.substring(0, position);
 					
-					// text의 길이 반환
-					int textLength = message.length();
-						
-					// text와 길이를 하나의 문자열로 합친다.
-					String sendMessage = "" + textLength + " True";
+					ServerCommunicate SC = new ServerCommunicate(link, host, textArea);
 					
-					// 서버에게 텍스트 길이 전달
-					output.print(sendMessage);
-					output.flush();
-					
-					// 커서 앞 텍스트 길이, true 전달 후 서버 접속 끊기
-					closingConnecting();
-
-					
-					// 다시 서버 접속, 커서 앞의 텍스트 보내기
-					accessServer();
-
-					output.print(message);
-					output.flush();
-					
-					// 접속 끊기
-					closingConnecting();
-					
-					
-					// 서버 접속, 커서 뒤의 텍스트를 보낸다.
-					accessServer();
-					
-					message = textArea.getText();
-					message = message.substring(position, textArea.getText().length());
-					
-					output.print(message);
-					output.flush();
-					
-					
-					// 연결 끊기
-					closingConnecting();
-
-					
-					// 서버로부터 문자열 수신 및 출력
-					accessServer();
-					
-					ArrayList<String> list = new ArrayList<>();
-					String receiveMessage = "";
-					isReceive = false;
-					
-					try {
-						while((receiveMessage = input.readLine()) != null) {
-							// 이전 문자열이 공백이면 break
-							if("SuccessfullyParsed".equals(receiveMessage)) {
-								isReceive = false;
-								break;
-							}
-							
-							isReceive = true;
-							
-							receiveMessage = receiveMessage.replace("white ", ""); // white 문자열 제거
-							list.add(receiveMessage);
-							
-							System.out.println(receiveMessage); // 서버로부터 받은 문자열 확인용 출력
-						}
-					} catch (IOException e2) {
-						e2.printStackTrace();
-					}
-					
-					closingConnecting();
+					ArrayList<String> list = SC.list;
+					position = SC.position;
+					isReceive = SC.isReceive;
 					
 					// 확인용 출력, popupmenu에 추가
 					for(int i = 1; i < list.size(); i++) {
@@ -397,11 +293,10 @@ public class TextEditor {
 							}
 							
 						}); // end ActionListener
-						
 						popupmenu.add(menuitem);
 						
 					} // end for
-					frame.add(popupmenu); // popupmenu를 frame에 추가
+					frame.add(popupmenu);
 				}
 			} // end keyPressed
 
@@ -434,7 +329,7 @@ public class TextEditor {
 			}); // end KeyListener
 		textArea.setComponentPopupMenu(popupmenu);
 		
-		frame.pack();  // pack() : JRrame의 내용물에 알맞게 윈도우 크기 조절
+		frame.pack();  // JRrame의 내용물에 알맞게 윈도우 크기 조절
 		frame.setSize(500,500);  // 윈도우 창 크기 지정
 		frame.setVisible(true);  // 윈도우 창 디스플레이
  
