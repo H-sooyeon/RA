@@ -6,6 +6,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.util.ArrayList;
 
+import javax.swing.JOptionPane;
 import javax.swing.JTextArea;
 
 public class ServerCommunication {
@@ -83,10 +84,14 @@ public class ServerCommunication {
 					break;
 				}
 				else if("LexError".equals(receiveMessage)) {
-					
+					JOptionPane.showMessageDialog(textArea, "incorrect syntax: LexError!", "LexError", JOptionPane.ERROR_MESSAGE);
+					isReceive = false;
+					break;
 				}
 				else if("ParseError".equals(receiveMessage)) {
-					
+					JOptionPane.showMessageDialog(textArea, "incorrect syntax: ParseError!",  "ParseError", JOptionPane.ERROR_MESSAGE);
+					isReceive = false;
+					break;
 				}
 				
 				isReceive = true;
