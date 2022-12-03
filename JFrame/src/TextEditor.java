@@ -17,6 +17,7 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
+import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.SwingUtilities;
@@ -39,6 +40,7 @@ public class TextEditor {
 	private File file;
 	private JTextArea lines;  // line number
 	private JPopupMenu popupmenu;
+	private JScrollBar popupscroll;
 	
 	private static InetAddress host;
 	private static Socket link = null;
@@ -264,9 +266,12 @@ public class TextEditor {
 				if(keyCode == KeyEvent.VK_TAB) {
 					popupmenu = new JPopupMenu();
 					
-					ServerCommunicate SC = new ServerCommunicate(link, host, textArea);
+					ServerCommunication SC = new ServerCommunication(link, host, textArea);
 					
 					ArrayList<String> list = SC.list;
+					ArrayList<Integer> cursorList = new ArrayList<>();
+					cursorList.add(0);
+					
 					position = SC.position;
 					isReceive = SC.isReceive;
 					
@@ -275,13 +280,18 @@ public class TextEditor {
 						// popupmenu에 문자열 추가
 						JMenuItem menuitem = new JMenuItem(list.get(i));
 						
-						// 공백을 기준으로 앞 문자열 추출
-						int stridx = list.get(i).indexOf(" ");
+						// 문자열 "..." 위치 추출
+						int setcursor = list.get(i).indexOf("...");
 						
-						// 공백이 없으면 문자열 길이 반환
-						if(stridx == -1) {
-							stridx = list.get(i).length();
+						// ...이 있으면 처음 ... 위치로 커서 위치 변경
+						cursorList.add(setcursor);
+						
+						if(setcursor != -1) {
+							// list에 있는 ... 문자열 제거
+							list.set(i, list.get(i).replace("...", ""));
 						}
+						
+						int stridx = list.get(i).length();
 						
 						// 공백이 있으면 공백 앞 문자열 추출, 없으면 문자열 그대로 추출
 						String itemHeader = list.get(i).substring(0, stridx);
@@ -290,9 +300,15 @@ public class TextEditor {
 							@Override
 							public void actionPerformed(ActionEvent e) {
 								textArea.append(itemHeader);
+								int listIndex = list.indexOf(itemHeader);
+								
+								if(cursorList.get(listIndex) != -1) {
+									textArea.setCaretPosition(position + cursorList.get(listIndex));
+								}
 							}
 							
 						}); // end ActionListener
+						
 						popupmenu.add(menuitem);
 						
 					} // end for
